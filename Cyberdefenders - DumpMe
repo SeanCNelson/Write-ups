@@ -1,0 +1,165 @@
+# DumpMe
+#CyberDefenders #Volatility 
+One of the SOC analysts took a memory dump from a machine infected with a meterpreter malware. As a Digital Forensicators, your job is to analyze the dump, extract the available indicators of compromise (IOCs) and answer the provided questions.
+https://cyberdefenders.org/blueteam-ctf-challenges/65
+
+---
+# 1 
+What is the SHA1 hash of triage.mem (memory dump)?
+sha1sum Triage-Memory.mem
+**c95e8cc8c946f95a109ea8e47a6800de10a27abd**
+
+---
+# 2 
+What volatility profile is the most appropriate for this machine? (ex: Win10x86_14393)
+`vol.py -f Triage-Memory.mem imageinfo > Imageinfo.txt`
+**Win7SP1x64**
+
+---
+# 3 
+What was the process ID of notepad.exe?
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 pslist > pslist.txt`
+CTRL + F "notepad"
+**3032**
+
+---
+# 4 
+Name the child process of wscript.exe.
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 pstree > pstree.txt`
+CTRL + F "wscript.exe"
+**UWkpjFjDzM.exe**
+
+---
+# 5
+What was the IP address of the machine at the time the RAM dump was created?
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 netscan > netscan.txt`
+Look through the Local Addresses for IPs
+**10.0.0.101**
+
+---
+# 6 
+Based on the answer regarding the infected PID, can you determine the IP of the attacker?
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 netscan > netscan.txt`
+CTRL + F "UWkpjFjDzM.exe"
+Look at the Foreign Address 
+**10.0.0.106**
+fun fact its also open on 4444
+
+---
+# 7 
+How many processes are associated with VCRUNTIME140.dll?
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 dlllist > dllList.txt`
+open the file and CTRL + F = "VCRUNTIME140.dll"
+
+OR
+
+`cat dllList.txt | grep VCRUNTIME140.dll`
+**5**
+
+---
+# 8 
+After dumping the infected process, what is its md5 hash?
+Look into the Pid for "UWkpjFjDzM.exe"
+see Pid "3496"
+
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 procdump --pid 3496 --dump-dir=./`
+`md5sum executable.3496.exe`
+**690ea20bc3bdfb328e23005d9a80c290**
+
+---
+# 9 
+What is the LM hash of Bob's account?
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 hashdump > hashdump.txt`
+Check Bob account
+**aad3b435b51404eeaad3b435b51404ee**
+
+---
+# 10 
+What memory protection constants does the VAD node at 0xfffffa800577ba10 have?
+
+**VAD** stands for virtual address descriptor. The windows kernel organizes memory allocated by the process.
+
+`0xfffffa800577ba10` is the offset
+
+We're going to use something called the "vadinfo" plugin
+
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 vadinfo > Vadinfo01.txt`
+
+CTRL + F "0xfffffa800577ba10"
+See Protection:
+**PAGE_READONLY**
+
+# 11 
+What memory protection did the VAD starting at 0x00000000033c0000 and ending at 0x00000000033dffff have?
+
+Same plugin as before "vadinfo"
+CTRL + F = "0x00000000033c0000"
+Search to see End : 33dffff
+
+see Protection:
+**PAGE_NOACCESS**
+
+---
+# 12 
+There was a VBS script that ran on the machine. What is the name of the script? (submit without file extension)
+
+So a VBS stands for "Visual Basic Script". VBS is a lightweight scripting tool that can be used to test and automate boring tasks. These are not compiled and can be run from the cmdline. 
+
+Let's pull the cmdline and see what we find
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 cmdline > cmdline.txt`
+
+Let's search up that malware we found
+CTRL + F = UWkpjFjDzM or ".vbs"
+Our VBS script is right above it
+**vhjReUDEuumrX**
+
+---
+# 13 
+An application was run at 2019-03-07 23:06:58 UTC. What is the name of the program? (Include extension)
+
+Based on the cheatsheets we have a plugin called shimcase. It check the Application Compatibility Shim Cache registry key. 
+
+`vol.py -f Triage-Memory.mem --profile=Win7SP1x64 shimcache > shimcache.txt`
+
+CTRL + F "2019-03-07 23:06:58 UTC"
+**skype.exe**
+
+---
+# 14 
+What was written in notepad.exe at the time when the memory dump was captured?
+
+This is a fun one. We don't want the process dump. We want the memory dump Let's dump the memory itself and open it to take a look
+
+Now that we have the file Let's run a "strings" command on the memdump file.
+
+We are going to run the flags -el. Notepad encodes the memory as "littleendian"
+https://linux.die.net/man/1/strings
+
+`strings -el 3032.dmp | grep flag > memdump.txt`
+
+Right at the top
+**flag<REDBULL_IS_LIFE>**
+
+---
+# 15 
+What is the short name of the file at file record 59045?
+
+Looking through our cheatsheets searching for "file record" we come across "mftparser". 
+Let's run this plugin and see what we get.
+
+It worked. let's cat the file to see if it exists first
+`cat mftparser.txt| grep 59045`
+see "Record Number: 59045"
+
+search the txt file for "Record Number: 59045"
+$FILE_NAME > Name/Path
+**EMPLOY~1.XLS**
+
+---
+# 16 
+This box was exploited and is running meterpreter. What was the infected PID?
+
+We know that there was a malicious file earlier. There is no file official file named "UWkpjFjDzM.exe"
+let's go back to our pstree or psview and find the file that was attached to the notepad.exe
+Look for the PID
+**3496**
