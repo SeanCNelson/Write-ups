@@ -1,0 +1,585 @@
+# Boss Of The SOC v1
+---
+
+#Splunk #SIEM #CyberDefenders 
+-   **Virtualbox**: unzip the VM (pass: cyberdefenders.org), start VM, and access Splunk from host machine via http://127.0.0.1:8000
+-   **VMware:** login to the VM using vagrant/vagrant and grab the IP address of the VM using "IP address" command. Access Splunk from the host machine using the IP address assigned to the VM via http://x.x.x.x:8000
+
+Using Virtual Box Make sure both network settings are attached to the "NAT Network"
+Use kali in Virtualbox
+Use Splunk and in Virtual Box
+run "IP Address"
+take the IP 
+http://X.X.X.X:8000
+
+**Scenario 1 (APT)**:
+The focus of this hands on lab will be an APT scenario and a ransomware scenario. You assume the persona of Alice Bluebird, the analyst who has recently been hired to protect and defend Wayne Enterprises against various forms of cyberattack.
+
+In this scenario, reports of the below graphic come in from your user community when they visit the Wayne Enterprises website, and some of the reports reference "P01s0n1vy." In case you are unaware, P01s0n1vy is an APT group that has targeted Wayne Enterprises. Your goal, as Alice, is to investigate the defacement, with an eye towards reconstructing the attack via the Lockheed Martin Kill Chain.
+
+**Scenario 2 (Ransomeware)**:
+In the second scenario, one of your users is greeted by this image on a Windows desktop that is claiming that files on the system have been encrypted and payment must be made to get the files back. It appears that a machine has been infected with Cerber ransomware at Wayne Enterprises and your goal is to investigate the ransomware with an eye towards reconstructing the attack.
+
+Import the .ova file
+File > Import Appliance > choose .ova file
+https://www.alphr.com/ova-virtualbox/
+
+---
+# 1 
+This is a simple question to get you familiar with submitting answers. What is the name of the company that makes the software that you are using for this competition? Just a six-letter word with no punctuation.
+Name of the SIEM
+**Splunk**
+
+---
+# 2 
+What is the likely IP address of someone from the Po1s0n1vy group scanning imreallynotbatman.com for web application vulnerabilities?
+
+`index="botsv1" earliest=0 imreallynotbatman.com scanner`
+look for src_ip
+**40.80.148.42**
+
+Destination IP is 192.168.250.70 aka. imreallynotbatman.com
+
+---
+# 3 
+What company created the web vulnerability scanner used by Po1s0n1vy? Type the company name. (For example, "Microsoft" or "Oracle")
+
+`index="botsv1" earliest=0 imreallynotbatman.com scanner`
+Overwhelming amount of scanners identify themself in the header
+look at "src_headers"
+First packet scroll to find "(Acunetix Web Vulnerability Scanner - Free Edition)"
+
+---
+# 4 
+What content management system is imreallynotbatman.com likely using? (Please do not include punctuation such as . , ! ? in your answer. We are looking for alpha characters only.)
+
+google "What is a content manager system"
+https://kinsta.com/knowledgebase/content-management-system/
+What Are Examples of Popular Content Management Systems?
+
+Joomla
+Drupal
+Magneto
+Squarespace
+Wix
+TYPO3
+
+CTRL + F "Joomla"
+**Joomla**
+
+---
+# 5 
+What is the name of the file that defaced the imreallynotbatman.com website? Please submit only the name of the file with the extension (For example, "notepad.exe" or "favicon.ico").
+**Look at 7 TRUST**
+
+---
+# 6 
+This attack used dynamic DNS to resolve to the malicious IP. What is the fully qualified domain name (FQDN) associated with this attack?
+**Look at 7 TRUST**
+
+---
+# 7 
+What IP address has Po1s0n1vy tied to domains that are pre-staged to attack Wayne Enterprises?
+
+Lets hit a few here in different order
+remove scanner from the search
+`index="botsv1" earliest=0 imreallynotbatman.com`
+Lets look at all the IPs (src_ip)
+
+40.80.148.42 - Scanning imreallynotbatman.com
+192.168.250.70 - Webserver (imreallynotbatman.com) click to filter look for "hostname"
+new IP 23.22.63.114 - Pre-staged to attack (Downloaded the file)
+
+Let's remove the domain and add the server IP and see if the server is making connections to the new IP
+remove Event Sampling as well
+`index="botsv1" earliest=0 src_ip=192.168.250.70 dest_ip="23.22.63.114"`
+
+We want to look at the "sub directories" 
+Look for new URLs in the joomla CMS "URL fields"
+`poisonivy-is-coming-for-you-batman.jpeg`
+
+This attack used dynamic DNS to resolve to the malicious IP. What is the fully qualified domain name (FQDN) associated with this attack?
+A DNS had to be resolved, let's look at the dest field
+prankglassinebracket.jumpingcrab.com
+
+What IP address has Po1s0n1vy tied to domains that are pre-staged to attack Wayne Enterprises?
+A vulnerability scanner hit the website what was the source ip?
+`"23.22.63.114"`
+
+---
+# 8 
+Based on the data gathered from this attack and common open-source intelligence sources for domain names, what is the email address most likely associated with the Po1s0n1vy APT group?
+
+By using OSINT we can start to search up this APT using these sites:
+https://www.virustotal.com/
+https://threatcrowd.org/
+https://www.robtex.com/
+https://otx.alienvault.com/
+https://www.threatminer.org/
+https://gchq.github.io/
+
+go to https://otx.alienvault.com/
+
+Search **prankglassinebracket.jumpingcrab.com**
+See **Passive DNS**
+See address 23.22.63.114 and click
+
+See **Passive DNS**
+The attacker is not batman or bruce wayne. We know the attack is poison ivy.
+see hostname **po1s0n1vy.com** at the bottom and click
+
+Expand Whois entry
+see Emails
+
+**lillian.rose@po1s0n1vy.com**
+
+---
+# 9 
+What IP address is likely attempting a brute force password attack against imreallynotbatman.com?
+Same as the new dest_ip from before
+`"23.22.63.114"`
+
+---
+# 10 
+What is the name of the executable uploaded by Po1s0n1vy? Please include the file extension. (For example, "notepad.exe" or "favicon.ico")
+
+Back to our default
+`index="botsv1" earliest=0`
+
+Let monitor the internet traffic so we can see the file being transferred
+`index="botsv1" earliest=0 sourcetype="stream:http"`
+
+Add our server as the destination
+`index="botsv1" earliest=0 sourcetype="stream:http" dest_ip="192.168.250.70"`
+
+Add the file search 
+`*.exe` 
+
+add "part_filename" to the fields
+
+CTRL+F ".exe"
+look at the third and fifth capture
+
+**3791.exe**
+
+---
+# 11 
+What is the MD5 hash of the executable uploaded?
+reset the search with just the default
+`index="botsv1" earliest=0 3791.exe`
+
+add windows sysmon logs for executables files
+`sourcetype= "XmlWinEventLog:Microsoft-Windows-Sysmon/Operational"`
+
+MD5 field
+bruteforce
+**AAE3F5A29935E6ABCC2C2754D12A9AF0**
+
+59A1D4FACD7B333F76C4142CD42D3ABA might be cmd
+
+---
+# 12 
+GCPD reported that common TTP (Tactics, Techniques, Procedures) for the Po1s0n1vy APT group, if initial compromise fails, is to send a spear-phishing email with custom malware attached to their intended target. This malware is usually connected to Po1s0n1vy's initial attack infrastructure. Using research techniques, provide the SHA256 hash of this malware.
+
+We're not looking for a file hash of the 3791.exe. We are trying to get the hash of another piece of malware that they would send should this one fail
+
+After some OSINT we find that 
+https://www.threatminer.org/
+search 23.22.63.114
+scroll down to "Malware samples" 
+see MD5 hash
+one CLEARLY stands out more than the others
+click on "**c99131e0169171935c5ac32615ed6261**"
+See SHA256
+
+THIS is the hash of the malware that would be sent to the victim should the initial attack fail
+**9709473ab351387aab9e816eff3910b9f28a7a70202e250ed46dba8f820f34a8**
+
+---
+# 13 
+What is the special hex code associated with the customized malware discussed in question 12? (Hint: It's not in Splunk)
+
+Lets go to virustotal for this one
+https://www.virustotal.com
+click "search" tab
+Paste the SHA-256 hash
+9709473ab351387aab9e816eff3910b9f28a7a70202e250ed46dba8f820f34a8
+click community
+see ryan kovar
+
+**53 74 65 76 65 20 42 72 61 6e 74 27 73 20 42 65 61 72 64 20 69 73 20 61 20 70 6f 77 65 72 66 75 6c 20 74 68 69 6e 67 2e 20 46 69 6e 64 20 74 68 69 73 20 6d 65 73 73 61 67 65 20 61 6e 64 20 61 73 6b 20 68 69 6d 20 74 6f 20 62 75 79 20 79 6f 75 20 61 20 62 65 65 72 21 21 21**
+
+---
+# 14 
+One of Po1s0n1vy's staged domains has some disjointed "unique" whois information. Concatenate the two codes together and submit them as a single answer.
+
+What we're looking for are other domain on the same IP address
+
+Using our previous OSINT tool
+https://otx.alienvault.com/dashboard/new
+
+Search **prankglassinebracket.jumpingcrab.com**
+See **Passive DNS**
+See address 23.22.63.114 and click
+See the first domain **waynecorinc.com** WATCH THE SPELLING
+
+https://www.whois.com/
+https://ca.godaddy.com/whois
+https://who.is/
+https://www.whoxy.com/ < - use this one
+
+Whois History API (Green button in the center)
+Search the domain **waynecorinc.com**
+
+Company_name: 31 73 74 32 66 69 6E 64 67 65 74 73 66 72 65 65 62 65 65 72
+Mailing Address: 66 72 6F 6D 72 79 61 6E 66 69 6E 64 68 69 6D 74 6F 67 65 74
+
+---
+# 15 
+What was the first brute force password used?
+We know its a webserver. Hydra can be used to crack password over the internet. Let's filter http traffic.
+`index="botsv1" earliest=0 sourcetype="stream:http"`
+
+Password cracking sends a bunch of post requests
+`http_method=POST`
+
+What we're looking for is "form data" Form-data is created by HTML forms which take user input and sends it to a web server. 
+Let's get the form_data for the usernames and passwords that may have bee tried.
+This is ask if anything related to the usernames and passwords were sent.
+`form_data=*username*passwd*`
+
+We don't need everything. Lets see just the form_data and what time each request was sent. 
+Create a table with the time and data being sent.
+`| table _time form_data`
+
+Set from first to last before the "&"
+**12345678**
+
+---
+# 16 
+One of the passwords in the brute force attack is James Brodsky's favorite Coldplay song. Hint: we are looking for a six-character word on this one. Which is it?
+
+We need to extract the password from each post request and table all 6 letter passwords
+
+Get all the post requests from the form data
+`index=botsv1 sourcetype=stream:http form_data=*username*passwd*`
+
+Get the time and form_data of all attempts
+`| table _time form_data`
+
+Let's extract the password from the form_data and save it as userpassword
+
+https://regexr.com/
+Using rex extract the form_data
+`| rex field=form_data "passwd=(?<userpassword>\w+)"`
+
+This expression finds the phrase passwd=. Creates the variable "userpassword" and only extracts the words. 
+`(?<variablename>)` create a capture group with variable
+`\w+` Capture multiple words 
+`[A-Za-z]+` Captures all letters
+
+`"passwd=(?<userpassword>\w+)"`
+`"passwd=(?<userpassword>[A-Za-z]+)"`
+
+We don't need all, just the 6 letter passwords. Evaluate and present them 
+```
+| eval password=len(userpassword)
+| search password=6
+```
+
+**Command so far**
+```
+index="botsv1" earliest=0 sourcetype="stream:http" http_method=POST form_data=*username*passwd*
+| table _time form_data
+| rex field=form_data "passwd=(?<userpassword>\w+)"
+| eval password=len(userpassword)
+| search password=6
+```
+
+Get a list of all the Coldplay songs
+![[Coldplaysongs.csv]]
+
+We can't use it outright, we need to configure it properly.
+Settings > Lookups > Lookup Tables / add new
+Import OG list > Lower all letters > see for evidence > Save new 
+```
+| inputlookup Coldplaysongs.csv
+| eval song=lower(Songname) 
+| fields song
+| outputlookup ReadyColdplaysongs.csv
+```
+
+We will now compare the new song list with the bruteforce passwords
+Back to the command we had before
+```
+index="botsv1" earliest=0 sourcetype="stream:http" http_method=POST form_data=*username*passwd*
+| table _time form_data
+| rex field=form_data "passwd=(?<userpassword>\w+)"
+| eval password=len(userpassword)
+| search password=6
+```
+
+Make sure all password tries are lowercase. They're already all lowercase I don't know why this worked. THIS ONE FUCKED ME UP. D:<
+`| eval password=lower(password)`
+
+Bring up ReadyColdplaysongs.csv. For all the words in the song column compare them to the passwords. If true, save the song.
+`| lookup ReadyColdplaysongs.csv song as password OUTPUTNEW song`
+
+View the passwordsong with the password tries. REMOVE THE PREVIOUS TABLE
+```
+| search passwordsong=*
+| table song password
+```
+
+**Final Command** REMOVE THE FIRST TABLE
+```
+index="botsv1" earliest=0 sourcetype="stream:http" http_method=POST form_data=*username*passwd*
+| rex field=form_data "passwd=(?<userpassword>\w+)"
+| eval password=len(userpassword)
+| search password=6
+| eval password=lower(userpassword)
+| lookup ReadyColdplaysongs.csv song as password OUTPUTNEW song
+| search song=*
+| table song password
+```
+
+---
+# 17 
+What was the correct password for admin access to the content management system running "imreallynotbatman.com"?
+
+6 Letters, the last password that was used from the previous search. (The time will be different)
+We can also search for which password was used twice.
+
+List all of the attempted passwords
+Count how man times they were used
+Display the count
+```
+index=botsv1 sourcetype=stream:http form_data=*username*passwd* dest_ip=192.168.250.70 
+| rex field=form_data "passwd=(?<userpassword>\w+)"
+| stats count by userpassword 
+| sort - count
+```
+Batman has 2
+**batman**
+
+---
+# 18 
+What was the average password length used in the password brute-forcing attempt? (Round to a closest whole integer. For example "5" not "5.23213")
+
+Search for the list of passwords
+Get the length of all the passwords
+Get the average of all the lengths
+Display the average
+```
+index=botsv1 sourcetype=stream:http form_data=*username*passwd* 
+| rex field=form_data "passwd=(?<userpassword>\w+)" 
+| search userpassword=* 
+| eval length=len(userpassword)
+| stats avg(length) as avg
+```
+
+---
+# 19 
+How many seconds elapsed between the brute force password scan identified the correct password and the compromised login? Round to 2 decimal places.
+
+Search and get the list of passwords
+Search for the compromised login
+Use the transaction keyword to find the time difference between the searches
+Show results and remember to round
+```
+index=botsv1 sourcetype=stream:http form_data=*username*passwd* 
+| rex field=form_data "passwd=(?<userpassword>\w+)" 
+| search userpassword=batman
+| transaction userpassword
+| table duration
+```
+
+92.169084
+92.17
+
+---
+# 20 
+How many unique passwords were attempted in the brute force attempt?
+
+Search and get the list of passwords:
+```
+index=botsv1 sourcetype=stream:http form_data=*username*passwd* 
+| rex field=form_data "passwd=(?<userpassword>\w+)" 
+```
+
+Use the stats command with direct count. This will find all unique answers
+`| stats dc(userpassword)`
+**412**
+
+---
+# 21 
+What was the most likely IP address of we8105desk in 24AUG2016?
+
+`index=botsv1 we8105desk`
+
+We can find the IP in the sourcetype
+`sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational"`
+Look at the source IPs 
+src_ip **192.168.250.100**
+
+---
+# 22 
+Amongst the Suricata signatures that detected the Cerber malware, which one alerted the fewest number of times? Submit ONLY the signature ID value as the answer. (No punctuation, just 7 integers.)
+
+Lets use the previous IP address we found for our search that will allows us to see the suricata data
+`index=botsv1 src_ip="192.168.250.100" sourcetype=suricata`
+
+add Cerber to the search
+`index=botsv1 src_ip="192.168.250.100" sourcetype=suricata Cerber`
+
+Look at the alert.signature_ID field
+**2816763**
+
+---
+# 23 
+What fully qualified domain name (FQDN) makes the Cerber ransomware attempt to direct the user to at the end of its encryption phase?
+
+Scroll up to the "Challenge Details Tab"
+Look at the second image
+we have a few addresses but "cerberhhyed5frqa" in the constant
+
+Lets take our dest_IP address we got from earlier and search with "cerberhhyed5frqa"
+`index=botsv1 dest_ip="192.168.250.100" cerberhhyed5frqa`
+1 event
+show as raw text
+"rrname":**cerberhhyed5frqa.xmfir0.win**
+
+---
+# 24 
+What was the first suspicious domain visited by we8105desk in 24AUG2016?
+
+Lets start with this search: Our IP and a stream:dns 
+`index=botsv1 src_ip="192.168.250.100" sourcetype:"stream:dns"`
+
+putting `08/24/2016` is the wrong format for the date
+There is only one year and month showing up so just put in the date
+`index=botsv1 src_ip="192.168.250.100" sourcetype="stream:dns" date_mday=24`
+
+If we google search "github Cerber IOC". we will come across this github repo https://github.com/jasonmiacono/IOCs/blob/master/cerber.ioc
+
+Take a look at some of the network/dns strings
+Let's add" Solidaritedeproximite.org" to our search
+`index=botsv1 src_ip="192.168.250.100" sourcetype="stream:dns" date_mday=24 Solidaritedeproximite.org` 
+
+we get two hits as it is the IOC.
+The other domains do not come up at all.
+**Solidaritedeproximite.org**
+
+---
+# 25 
+During the initial Cerber infection a VB script is run. The entire script from this execution, pre-pended by the name of the launching .exe, can be found in a field in Splunk. What is the length in characters of the value of this field?
+
+Instead of using the IP address use the host of the machine that was compromised.
+`index=botsv1 we8105desk sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational vbs`
+
+The script is launched through a command line
+Lets table command line
+`| table CommandLine`
+
+Now we just eval the length of the command
+`| eval cmdlength=len(commandLine)`
+
+Look at the right
+**4490**
+
+---
+# 26 
+What is the name of the USB key inserted by Bob Smith?
+USB events are contained in the Windows registry logs 
+`index=botsv1 sourcetype=WinRegistry`
+
+In order to find the name of the USB we can add the value "friendlyname"
+
+Let's google: finding the usb name in windows registry logs
+https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-device-specific-registry-settings
+
+name of USB key is stored under "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\USB", in a name named `FriendlyName`.
+
+`index=botsv1 sourcetype=WinRegistry friendlyname`
+
+Show all 8 lines
+Look for "data"
+
+**MIRANDA_PRI**
+
+---
+# 27 
+Bob Smith's workstation (we8105desk) was connected to a file server during the ransomware outbreak. What is the IP address of the file server?
+
+Let's search up that hostname and see what we get
+`index=botsv1 host="we8105desk"`
+
+Look at the dest_ip with the most hits, this will also have to be a 192.168.x.x IP
+**192.168.250.20**
+
+---
+# 28 
+How many distinct PDFs did the ransomware encrypt on the remote file server?
+Now that we know the IP address, Let's server by hostname and search for PDFs
+
+Let's find PDFs on the network
+`index=botsv1 pdf`
+
+The remote file server is **we9041srv** The we got the from our previous answer IP 
+`source_Address="192.168.250.100"`
+
+Take a look at where the .pdf data are kept "Relative Target Name". We can do a direct count. 
+`| stats dc(Relative_Target_Name)`
+
+**257**
+
+---
+# 29 
+The VBScript found in question 25 launches 121214.tmp. What is the ParentProcessId of this initial launch?
+Let's go back to our previous search when we were looking for the vbs scripts
+
+`index=botsv1 we8105desk sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational vbs`
+
+Let's simple add **121214.tmp** to the end
+`index=botsv1 we8105desk sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational vbs 121214.tmp`
+
+Remove the garbge with
+`| table ParentProcessId`
+
+Look on the left for parent_process_id
+**3968**
+
+---
+# 30 
+The Cerber ransomware encrypts files located in Bob Smith's Windows profile. How many .txt files does it encrypt?
+
+Let's figure out which computer bob.smith belong to and all the text files
+`index=botsv1 sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational bob.smith *.txt`
+
+Look at "file path" field to find location of files
+
+Let's add any txt files through the file_path then remove path so we capture all the .txt files
+`index=botsv1 sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational bob.smith *.txt file_path="C:\\Users\\bob.smith.WAYNECORPINC\\*.txt"`
+
+Count them all
+`| stats dc(file_path)`
+
+---
+# 31 
+The malware downloads a file that contains the Cerber ransomware crypto code. What is the name of that file? 
+
+We know from earlier that the victim IP is 192.168.250.100 and downloading something needs https let's filter both. We also know the malicois website it visited **solidaritedeproximite.org**. Let's add that in as well.
+`index=botsv1 src=192.168.250.100 sourcetype=stream:http solidaritedeproximite.org` 
+
+The file server has directories. Look at "URL" field
+**mhtr.jpg**
+
+---
+# 32 
+Now that you know the name of the ransomware's encryptor file, what obfuscation technique does it likely use?
+
+This one I leave to you. What kind of obfuscation technique hides messages in photos?
+
+Good luck my friends :).
+
+
