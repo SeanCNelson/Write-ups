@@ -1,5 +1,6 @@
 # Boss Of The SOC v1
 ---
+https://cyberdefenders.org/blueteam-ctf-challenges/15
 
 #Splunk #SIEM #CyberDefenders 
 -   **Virtualbox**: unzip the VM (pass: cyberdefenders.org), start VM, and access Splunk from host machine via http://127.0.0.1:8000
